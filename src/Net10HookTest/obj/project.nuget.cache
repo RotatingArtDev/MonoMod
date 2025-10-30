@@ -1,0 +1,13 @@
+{
+  "version": 2,
+  "dgSpecHash": "uUiJHliR9F4=",
+  "success": true,
+  "projectFilePath": "D:\\MonoMod-reorganize-arm64\\src\\Net10HookTest\\Net10HookTest.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\Administrator\\.nuget\\packages\\iced\\1.21.0\\iced.1.21.0.nupkg.sha512",
+    "C:\\Users\\Administrator\\.nuget\\packages\\mono.cecil\\0.11.5\\mono.cecil.0.11.5.nupkg.sha512",
+    "C:\\Users\\Administrator\\.nuget\\packages\\monomod.backports\\1.1.2\\monomod.backports.1.1.2.nupkg.sha512",
+    "C:\\Users\\Administrator\\.nuget\\packages\\monomod.ilhelpers\\1.1.0\\monomod.ilhelpers.1.1.0.nupkg.sha512"
+  ],
+  "logs": []
+}

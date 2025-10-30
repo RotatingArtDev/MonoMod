@@ -69,7 +69,7 @@ namespace MonoMod.Core.Platforms
                 ArchitectureKind.x86 => new Architectures.x86Arch(system),
                 ArchitectureKind.x86_64 => new Architectures.x86_64Arch(system),
                 ArchitectureKind.Arm => throw new NotImplementedException(),
-                ArchitectureKind.Arm64 => throw new NotImplementedException(),
+                ArchitectureKind.Arm64 => new Architectures.Arm64Arch(system),
                 var kind => throw new PlatformNotSupportedException($"Architecture kind {kind} not supported"),
             };
         }
@@ -86,12 +86,12 @@ namespace MonoMod.Core.Platforms
         public static ISystem CreateCurrentSystem()
             => PlatformDetection.OS switch
             {
-                OSKind.Posix => throw new NotImplementedException(),
+                OSKind.Posix =>  new Systems.LinuxSystem(),
                 OSKind.Linux => new Systems.LinuxSystem(),
-                OSKind.Android => throw new NotImplementedException(),
+                OSKind.Android => new Systems.LinuxSystem(),
                 OSKind.OSX => new Systems.MacOSSystem(),
                 OSKind.IOS => throw new NotImplementedException(),
-                OSKind.BSD => throw new NotImplementedException(),
+                OSKind.BSD => new Systems.LinuxSystem(),
                 OSKind.Windows or OSKind.Wine => new Systems.WindowsSystem(),
                 var kind => throw new PlatformNotSupportedException($"OS kind {kind} not supported"),
             };

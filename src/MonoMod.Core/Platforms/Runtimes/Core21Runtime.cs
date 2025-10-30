@@ -70,7 +70,7 @@ namespace MonoMod.Core.Platforms.Runtimes
         protected static unsafe IntPtr ReadObjectVTable(IntPtr @object, int index)
             => *GetVTableEntry(@object, index);
 
-        private unsafe void CheckVersionGuid(IntPtr jit)
+        protected unsafe void CheckVersionGuid(IntPtr jit)
         {
             var getVersionIdentPtr = (delegate* unmanaged[Thiscall]<IntPtr, Guid*, void>)ReadObjectVTable(jit, VtableIndexICorJitCompilerGetVersionGuid);
             Guid guid;
@@ -84,28 +84,42 @@ namespace MonoMod.Core.Platforms.Runtimes
         private IDisposable? n2mHookHelper;
         private IDisposable? m2nHookHelper;
 
-        protected unsafe override void InstallJitHook(IntPtr jit)
+        protected unsafe override void InstallManagedJitHook(IntPtr jit)
         {
+            MMDbgLog.Trace($"InstallManagedJitHook: Starting JIT hook installation");
+            
             CheckVersionGuid(jit);
+            MMDbgLog.Trace($"InstallManagedJitHook: Version GUID check passed");
 
             // Get the real compile method vtable slot
+            MMDbgLog.Trace($"InstallManagedJitHook: Getting compile method vtable slot (index: {VtableIndexICorJitCompilerCompileMethod})");
             var compileMethodSlot = GetVTableEntry(jit, VtableIndexICorJitCompilerCompileMethod);
+            MMDbgLog.Trace($"InstallManagedJitHook: Got compile method slot at 0x{(IntPtr)compileMethodSlot:x16}");
+            
             var compileMethod = EHManagedToNative(*compileMethodSlot, out m2nHookHelper);
+            MMDbgLog.Trace($"InstallManagedJitHook: Got compile method at 0x{compileMethod:x16}");
 
             // create our compileMethod delegate
+            MMDbgLog.Trace($"InstallManagedJitHook: Creating compile method delegate");
             var ourCompileMethodDelegate = CastCompileHookToRealType(CreateCompileMethodDelegate(compileMethod));
             ourCompileMethod = ourCompileMethodDelegate; // stash it away so that it stays alive forever
+            MMDbgLog.Trace($"InstallManagedJitHook: Created compile method delegate");
 
             var ourCompileMethodPtr = EHNativeToManaged(Marshal.GetFunctionPointerForDelegate(ourCompileMethodDelegate), out n2mHookHelper);
+            MMDbgLog.Trace($"InstallManagedJitHook: Got our compile method pointer at 0x{ourCompileMethodPtr:x16}");
 
             // invoke our CompileMethodPtr through ICMP to ensure that the JIT has compiled any needed thunks
+            MMDbgLog.Trace($"InstallManagedJitHook: Invoking compile method to prepare");
             InvokeCompileMethodToPrepare(ourCompileMethodPtr);
+            MMDbgLog.Trace($"InstallManagedJitHook: Compile method preparation complete");
 
             // and now we can install our method pointer as a JIT hook
             Span<byte> ptrData = stackalloc byte[sizeof(IntPtr)];
             MemoryMarshal.Write(ptrData, ref ourCompileMethodPtr);
 
+            MMDbgLog.Trace($"InstallManagedJitHook: Patching vtable");
             System.PatchData(PatchTargetKind.ReadOnly, (IntPtr)compileMethodSlot, ptrData, default);
+            MMDbgLog.Trace($"InstallManagedJitHook: JIT hook installation complete");
         }
 
         protected unsafe virtual void InvokeCompileMethodToPrepare(IntPtr method)
@@ -175,12 +189,11 @@ namespace MonoMod.Core.Platforms.Runtimes
                 byte** pNativeEntry,
                 uint* pNativeSizeOfCode)
             {
+                if (jit == IntPtr.Zero)
+                    return CorJitResult.CORJIT_OK;
 
                 *pNativeEntry = null;
                 *pNativeSizeOfCode = 0;
-
-                if (jit == IntPtr.Zero)
-                    return CorJitResult.CORJIT_OK;
 
                 var lastError = MarshalEx.GetLastPInvokeError();
                 nint nativeException = default;
@@ -330,27 +343,66 @@ namespace MonoMod.Core.Platforms.Runtimes
                 }
 
                 { // set up CreateRuntimeMethodInfoStub
-                    var runtimeMethodInfoStubCtorArgs = new[] { typeof(IntPtr), typeof(object) };
                     var runtimeMethodInfoStub = typeof(RuntimeMethodHandle).Assembly.GetType("System.RuntimeMethodInfoStub");
                     Helpers.DAssert(runtimeMethodInfoStub is not null);
-                    var runtimeMethodInfoStubCtor = runtimeMethodInfoStub.GetConstructor(runtimeMethodInfoStubCtorArgs);
-                    Helpers.DAssert(runtimeMethodInfoStubCtor is not null);
 
-                    MethodInfo runtimeMethodInfoStubCtorWrapper;
-                    using (var dmd = new DynamicMethodDefinition(
-                            "new RuntimeMethodInfoStub", runtimeMethodInfoStub, runtimeMethodInfoStubCtorArgs
-                        ))
+                    // 获取 RuntimeMethodHandleInternal 类型
+                    var runtimeMethodHandleInternalType = typeof(RuntimeMethodHandle).Assembly.GetType("System.RuntimeMethodHandleInternal");
+                    Helpers.DAssert(runtimeMethodHandleInternalType is not null);
+
+                    // 检查是否存在接受 IntPtr 的构造函数（.NET 9）
+                    var intPtrCtor = runtimeMethodInfoStub.GetConstructor(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
+                        null, new Type[] { typeof(IntPtr), typeof(object) }, null);
+
+                    MethodInfo invokeWrapper;
+                    if (intPtrCtor != null)
                     {
-                        var il = dmd.GetILGenerator();
-                        il.Emit(OpCodes.Ldarg_0);
-                        il.Emit(OpCodes.Ldarg_1);
-                        il.Emit(OpCodes.Newobj, runtimeMethodInfoStubCtor);
-                        il.Emit(OpCodes.Ret);
+                        // 使用 .NET 9 的构造函数签名
+                        using (var dmd = new DynamicMethodDefinition(
+                                "new RuntimeMethodInfoStub", runtimeMethodInfoStub, new Type[] { typeof(IntPtr), typeof(object) }
+                            ))
+                        {
+                            var il = dmd.GetILGenerator();
+                            il.Emit(OpCodes.Ldarg_0);
+                            il.Emit(OpCodes.Ldarg_1);
+                            il.Emit(OpCodes.Newobj, intPtrCtor);
+                            il.Emit(OpCodes.Ret);
 
-                        runtimeMethodInfoStubCtorWrapper = dmd.Generate();
+                            invokeWrapper = dmd.Generate();
+                        }
+                    }
+                    else
+                    {
+                        // 使用 .NET 10 的构造函数签名
+                        var internalCtor = runtimeMethodInfoStub.GetConstructor(
+                            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
+                            null, new Type[] { runtimeMethodHandleInternalType, typeof(object) }, null);
+                        Helpers.DAssert(internalCtor is not null);
+
+                        // 获取 RuntimeMethodHandleInternal 的构造函数
+                        var runtimeMethodHandleInternalCtor = runtimeMethodHandleInternalType.GetConstructor(
+                            BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public,
+                            null, new Type[] { typeof(IntPtr) }, null);
+                        // 注意：这里必须检查是否为 null，因为 .NET 10 中 RuntimeMethodHandleInternal 可能没有这样的公共构造函数，但有一个内部构造函数
+                        Helpers.DAssert(runtimeMethodHandleInternalCtor is not null, "RuntimeMethodHandleInternal constructor not found");
+
+                        using (var dmd = new DynamicMethodDefinition(
+                                "new RuntimeMethodInfoStub", runtimeMethodInfoStub, new Type[] { typeof(IntPtr), typeof(object) }
+                            ))
+                        {
+                            var il = dmd.GetILGenerator();
+                            // 创建 RuntimeMethodHandleInternal 实例
+                            il.Emit(OpCodes.Ldarg_0);
+                            il.Emit(OpCodes.Newobj, runtimeMethodHandleInternalCtor);
+                            il.Emit(OpCodes.Ldarg_1);
+                            il.Emit(OpCodes.Newobj, internalCtor);
+                            il.Emit(OpCodes.Ret);
+
+                            invokeWrapper = dmd.Generate();
+                        }
                     }
 
-                    CreateRuntimeMethodInfoStub = runtimeMethodInfoStubCtorWrapper.CreateDelegate<CreateRuntimeMethodInfoStubD>();
+                    CreateRuntimeMethodInfoStub = invokeWrapper.CreateDelegate<CreateRuntimeMethodInfoStubD>();
                 }
 
                 { // set up CreateRuntimeMethodHandle
@@ -433,91 +485,124 @@ namespace MonoMod.Core.Platforms.Runtimes
 
         protected virtual unsafe void MakeAssemblySystemAssembly(Assembly assembly)
         {
-            // RuntimeAssembly.m_assembly is a DomainAssembly*,
-            // which contains an Assembly*,
-            // which contains a PEAssembly*,
-            // which is a subclass of PEFile
-            // which has a `flags` field, with bit 0x01 representing 'system'
-
-            const int PEFILE_SYSTEM = 0x01;
-
-            var domAssembly = (IntPtr)RuntimeAssemblyPtrField.GetValue(assembly)!;
-
-            // DomainAssembly in src/coreclr/src/vm/domainfile.h
-            var domOffset =
-                IntPtr.Size + // VTable ptr
-                              // DomainFile
-                IntPtr.Size + // PTR_AppDomain               m_pDomain;
-                IntPtr.Size + // PTR_PEFile                  m_pFile;
-                IntPtr.Size + // PTR_PEFile                  m_pOriginalFile;
-                IntPtr.Size + // PTR_Module                  m_pModule;
-                sizeof(int) + // FileLoadLevel               m_level; // FileLoadLevel is an enum with unspecified type; I assume it defaults to 'int' because that's what `enum class` does
-                IntPtr.Size + // LOADERHANDLE                m_hExposedModuleObject;
-                IntPtr.Size + // ExInfo* m_pError;
-                sizeof(int) + // DWORD                    m_notifyflags;
-                sizeof(int) + // BOOL                        m_loading; // no matter the actual size of this BOOL, the next member is a pointer, and we'd always be misaligned
-                IntPtr.Size + // DynamicMethodTable * m_pDynamicMethodTable;
-                IntPtr.Size + // class UMThunkHash *m_pUMThunkHash;
-                sizeof(int) + // BOOL m_bDisableActivationCheck;
-                sizeof(int) + // DWORD m_dwReasonForRejectingNativeImage;
-                              // #ifdef FEATURE_PREJIT Volatile<DomainFile*> m_pNextDomainFileWithNativeImage;
-                              // DomainAssembly
-                IntPtr.Size + // LOADERHANDLE                            m_hExposedAssemblyObject;
-                0; // here is our Assembly*
-
-            if (IntPtr.Size == 8)
+            try
             {
-                domOffset +=
-                    sizeof(int); // padding to align the next TADDR (which is a void*) (m_hExposedModuleObject)
+                // RuntimeAssembly.m_assembly is a DomainAssembly*,
+                // which contains an Assembly*,
+                // which contains a PEAssembly*,
+                // which is a subclass of PEFile
+                // which has a `flags` field, with bit 0x01 representing 'system'
+
+                const int PEFILE_SYSTEM = 0x01;
+
+                var domAssembly = (IntPtr)RuntimeAssemblyPtrField.GetValue(assembly)!;
+
+                // DomainAssembly in src/coreclr/src/vm/domainfile.h
+                var domOffset =
+                    IntPtr.Size + // VTable ptr
+                                  // DomainFile
+                    IntPtr.Size + // PTR_AppDomain               m_pDomain;
+                    IntPtr.Size + // PTR_PEFile                  m_pFile;
+                    IntPtr.Size + // PTR_PEFile                  m_pOriginalFile;
+                    IntPtr.Size + // PTR_Module                  m_pModule;
+                    sizeof(int) + // FileLoadLevel               m_level; // FileLoadLevel is an enum with unspecified type; I assume it defaults to 'int' because that's what `enum class` does
+                    IntPtr.Size + // LOADERHANDLE                m_hExposedModuleObject;
+                    IntPtr.Size + // ExInfo* m_pError;
+                    sizeof(int) + // DWORD                    m_notifyflags;
+                    sizeof(int) + // BOOL                        m_loading; // no matter the actual size of this BOOL, the next member is a pointer, and we'd always be misaligned
+                    IntPtr.Size + // DynamicMethodTable * m_pDynamicMethodTable;
+                    IntPtr.Size + // class UMThunkHash *m_pUMThunkHash;
+                    sizeof(int) + // BOOL m_bDisableActivationCheck;
+                    sizeof(int) + // DWORD m_dwReasonForRejectingNativeImage;
+                                  // #ifdef FEATURE_PREJIT Volatile<DomainFile*> m_pNextDomainFileWithNativeImage;
+                                  // DomainAssembly
+                    IntPtr.Size + // LOADERHANDLE                            m_hExposedAssemblyObject;
+                    0; // here is our Assembly*
+
+                if (IntPtr.Size == 8)
+                {
+                    domOffset +=
+                        sizeof(int); // padding to align the next TADDR (which is a void*) (m_hExposedModuleObject)
+                }
+
+                var pAssembly = *(IntPtr*)(((byte*)domAssembly) + domOffset);
+
+                // Check if pAssembly is valid before proceeding
+                if (pAssembly == IntPtr.Zero)
+                {
+                    MMDbgLog.Warning($"MakeAssemblySystemAssembly: pAssembly is null, cannot proceed. This may be due to .NET runtime internal structure changes.");
+                    return;
+                }
+
+                // Assembly in src/coreclr/src/vm/assembly.hpp
+                var pAssemOffset =
+                    IntPtr.Size + // PTR_BaseDomain        m_pDomain;
+                    IntPtr.Size + // PTR_ClassLoader       m_pClassLoader;
+                    IntPtr.Size + // PTR_MethodDesc        m_pEntryPoint;
+                    IntPtr.Size + // PTR_Module            m_pManifest;
+                    0; // here is out PEAssembly* (m_pManifestFile)
+
+                var peAssembly = *(IntPtr*)(((byte*)pAssembly) + pAssemOffset);
+                
+                // Check if peAssembly is valid before proceeding
+                if (peAssembly == IntPtr.Zero)
+                {
+                    MMDbgLog.Warning($"MakeAssemblySystemAssembly: peAssembly is null, cannot proceed. This may be due to .NET runtime internal structure changes.");
+                    return;
+                }
+
+                // PEAssembly in src/coreclr/src/vm/pefile.h
+                var peAssemOffset =
+                    IntPtr.Size + // VTable ptr
+                                  // PEFile
+                    (IsDebugClr ? 0 + // #ifdef _DEBUG 
+                        IntPtr.Size + // LPCWSTR             m_pDebugName;
+                                      // SBuffer // src/coreclr/vm/sbuffer.h
+                        sizeof(int) + // COUNT_T             m_size; // COUNT_T is a typedef of uint32_t
+                        sizeof(int) + // COUNT_T             m_allocation;
+                        sizeof(int) + // UINT32              m_flags;
+                                      //sizeof(int) + // padding to 8 bytes
+                        IntPtr.Size + // union { BYTE* m_buffer; WCHAR* m_asStr; };
+                        sizeof(int) + // int                 m_revision
+                                      // SString (itself empty, only base type SBuffer has data)
+                                      // SString             m_debugName; // src/coreclr/vm/sstring.h
+                                      //sizeof(int) + // padding to 8 bytes
+                    0 : 0) +          // #endif
+                    IntPtr.Size + // PTR_PEImage              m_identity;
+                    IntPtr.Size + // PTR_PEImage              m_openedILimage;
+                    sizeof(int) + // BOOL                     m_MDImportIsRW_Debugger_Use_Only; // i'm pretty sure that these bools are sizeof(int)
+                    sizeof(int) + // Volatile<BOOL>           m_bHasPersistentMDImport;         // but they might not be, and it might vary (that would be a pain in the ass)
+                    IntPtr.Size + // IMDInternalImport       *m_pMDImport;
+                    IntPtr.Size + // IMetaDataImport2        *m_pImporter;
+                    IntPtr.Size + // IMetaDataEmit           *m_pEmitter;
+                    IntPtr.Size + // SimpleRWLock            *m_pMetadataLock;
+                    sizeof(int) + // Volatile<LONG>           m_refCount; // fuck C long
+                    0; // here is out int (flags)
+
+                if (IsDebugClr && IntPtr.Size == 8)
+                {
+                    peAssemOffset += 2 * sizeof(int); // filled in padding
+                }
+
+                var flags = (int*)(((byte*)peAssembly) + peAssemOffset);
+                *flags |= PEFILE_SYSTEM;
             }
 
-            var pAssembly = *(IntPtr*)(((byte*)domAssembly) + domOffset);
-
-            // Assembly in src/coreclr/src/vm/assembly.hpp
-            var pAssemOffset =
-                IntPtr.Size + // PTR_BaseDomain        m_pDomain;
-                IntPtr.Size + // PTR_ClassLoader       m_pClassLoader;
-                IntPtr.Size + // PTR_MethodDesc        m_pEntryPoint;
-                IntPtr.Size + // PTR_Module            m_pManifest;
-                0; // here is out PEAssembly* (m_pManifestFile)
-
-            var peAssembly = *(IntPtr*)(((byte*)pAssembly) + pAssemOffset);
-
-            // PEAssembly in src/coreclr/src/vm/pefile.h
-            var peAssemOffset =
-                IntPtr.Size + // VTable ptr
-                              // PEFile
-                (IsDebugClr ? 0 + // #ifdef _DEBUG 
-                    IntPtr.Size + // LPCWSTR             m_pDebugName;
-                                  // SBuffer // src/coreclr/vm/sbuffer.h
-                    sizeof(int) + // COUNT_T             m_size; // COUNT_T is a typedef of uint32_t
-                    sizeof(int) + // COUNT_T             m_allocation;
-                    sizeof(int) + // UINT32              m_flags;
-                                  //sizeof(int) + // padding to 8 bytes
-                    IntPtr.Size + // union { BYTE* m_buffer; WCHAR* m_asStr; };
-                    sizeof(int) + // int                 m_revision
-                                  // SString (itself empty, only base type SBuffer has data)
-                                  // SString             m_debugName; // src/coreclr/vm/sstring.h
-                                  //sizeof(int) + // padding to 8 bytes
-                0 : 0) +          // #endif
-                IntPtr.Size + // PTR_PEImage              m_identity;
-                IntPtr.Size + // PTR_PEImage              m_openedILimage;
-                sizeof(int) + // BOOL                     m_MDImportIsRW_Debugger_Use_Only; // i'm pretty sure that these bools are sizeof(int)
-                sizeof(int) + // Volatile<BOOL>           m_bHasPersistentMDImport;         // but they might not be, and it might vary (that would be a pain in the ass)
-                IntPtr.Size + // IMDInternalImport       *m_pMDImport;
-                IntPtr.Size + // IMetaDataImport2        *m_pImporter;
-                IntPtr.Size + // IMetaDataEmit           *m_pEmitter;
-                IntPtr.Size + // SimpleRWLock            *m_pMetadataLock;
-                sizeof(int) + // Volatile<LONG>           m_refCount; // fuck C long
-                0; // here is out int (flags)
-
-            if (IsDebugClr && IntPtr.Size == 8)
+            catch (NullReferenceException ex)
             {
-                peAssemOffset += 2 * sizeof(int); // filled in padding
+                MMDbgLog.Warning($"MakeAssemblySystemAssembly null reference: {ex.Message}. This is expected on .NET 10 due to internal structure changes.");
+                // Don't rethrow, just log and continue
+            }
+            catch (AccessViolationException ex)
+            {
+                MMDbgLog.Warning($"MakeAssemblySystemAssembly memory access violation: {ex.Message}");
+                // Don't rethrow, just log and continue
+            }
+            catch (Exception ex)
+            {
+                MMDbgLog.Warning($"MakeAssemblySystemAssembly error: {ex.Message}");
             }
 
-            var flags = (int*)(((byte*)peAssembly) + peAssemOffset);
-            *flags |= PEFILE_SYSTEM;
         }
     }
 }

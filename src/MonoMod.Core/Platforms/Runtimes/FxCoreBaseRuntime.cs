@@ -103,6 +103,14 @@ namespace MonoMod.Core.Platforms.Runtimes
             };
         }
 
+        protected static Abi AbiForCoreFx45ARM64(Abi baseAbi)
+        {
+            return baseAbi with
+            {
+                ArgumentOrder = new[] { SpecialArgumentKind.ThisPointer, SpecialArgumentKind.ReturnBuffer, SpecialArgumentKind.GenericContext, SpecialArgumentKind.UserArguments },
+            };
+        }
+
         private static readonly Type? RTDynamicMethod =
             typeof(DynamicMethod).GetNestedType("RTDynamicMethod", BindingFlags.NonPublic);
         private static readonly FieldInfo? RTDynamicMethod_m_owner =

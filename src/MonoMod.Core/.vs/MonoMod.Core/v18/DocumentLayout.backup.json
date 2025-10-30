@@ -1,0 +1,194 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "D:\\MonoMod-reorganize-arm64\\src\\MonoMod.Core\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{3AF9DE6F-7E3D-77AB-271A-9BB16EEE80D9}|MonoMod.Core.csproj|d:\\monomod-reorganize-arm64\\src\\monomod.core\\interop\\coreclr.v100.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{3AF9DE6F-7E3D-77AB-271A-9BB16EEE80D9}|MonoMod.Core.csproj|solutionrelative:interop\\coreclr.v100.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{6705F5BE-4DF2-BF8B-2C2B-E675ABF4D150}|..\\MonoMod.RuntimeDetour\\MonoMod.RuntimeDetour.csproj|d:\\monomod-reorganize-arm64\\src\\monomod.runtimedetour\\monomod.runtimedetour.csproj||{04B8AB82-A572-4FEF-95CE-5222444B6B64}|"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{3AF9DE6F-7E3D-77AB-271A-9BB16EEE80D9}|MonoMod.Core.csproj|d:\\monomod-reorganize-arm64\\src\\monomod.core\\platforms\\runtimes\\core80runtime.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{3AF9DE6F-7E3D-77AB-271A-9BB16EEE80D9}|MonoMod.Core.csproj|solutionrelative:platforms\\runtimes\\core80runtime.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{3AF9DE6F-7E3D-77AB-271A-9BB16EEE80D9}|MonoMod.Core.csproj|d:\\monomod-reorganize-arm64\\src\\monomod.core\\platforms\\runtimes\\core90runtime.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{3AF9DE6F-7E3D-77AB-271A-9BB16EEE80D9}|MonoMod.Core.csproj|solutionrelative:platforms\\runtimes\\core90runtime.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{3AF9DE6F-7E3D-77AB-271A-9BB16EEE80D9}|MonoMod.Core.csproj|d:\\monomod-reorganize-arm64\\src\\monomod.core\\platforms\\runtimes\\core100runtime.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{3AF9DE6F-7E3D-77AB-271A-9BB16EEE80D9}|MonoMod.Core.csproj|solutionrelative:platforms\\runtimes\\core100runtime.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{3AF9DE6F-7E3D-77AB-271A-9BB16EEE80D9}|MonoMod.Core.csproj|d:\\monomod-reorganize-arm64\\src\\monomod.core\\platforms\\runtimes\\monoruntime.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{3AF9DE6F-7E3D-77AB-271A-9BB16EEE80D9}|MonoMod.Core.csproj|solutionrelative:platforms\\runtimes\\monoruntime.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{3AF9DE6F-7E3D-77AB-271A-9BB16EEE80D9}|MonoMod.Core.csproj|d:\\monomod-reorganize-arm64\\src\\monomod.core\\platforms\\runtimes\\corebaseruntime.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{3AF9DE6F-7E3D-77AB-271A-9BB16EEE80D9}|MonoMod.Core.csproj|solutionrelative:platforms\\runtimes\\corebaseruntime.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{3AF9DE6F-7E3D-77AB-271A-9BB16EEE80D9}|MonoMod.Core.csproj|d:\\monomod-reorganize-arm64\\src\\monomod.core\\platforms\\runtimes\\core21runtime.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{3AF9DE6F-7E3D-77AB-271A-9BB16EEE80D9}|MonoMod.Core.csproj|solutionrelative:platforms\\runtimes\\core21runtime.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{3AF9DE6F-7E3D-77AB-271A-9BB16EEE80D9}|MonoMod.Core.csproj|d:\\monomod-reorganize-arm64\\src\\monomod.core\\platforms\\runtimes\\core60runtime.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{3AF9DE6F-7E3D-77AB-271A-9BB16EEE80D9}|MonoMod.Core.csproj|solutionrelative:platforms\\runtimes\\core60runtime.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 7,
+          "Children": [
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{34e76e81-ee4a-11d0-ae2e-00a0c90fffc3}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{d78612c7-9962-4b83-95d9-268046dad23a}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{cce594b6-0c39-4442-ba28-10c64ac7e89f}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{1c4feeaa-4718-4aa9-859d-94ce25d182ba}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:1:0:{3ae79031-e1bc-11d0-8f78-00a0c9110057}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{dee22b65-9761-4a26-8fb2-759b971d6dfc}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:1:0:{e8034f19-ab72-4f06-83fd-f6832b41aa63}"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "CoreCLR.V100.cs",
+              "DocumentMoniker": "D:\\MonoMod-reorganize-arm64\\src\\MonoMod.Core\\Interop\\CoreCLR.V100.cs",
+              "RelativeDocumentMoniker": "Interop\\CoreCLR.V100.cs",
+              "ToolTip": "D:\\MonoMod-reorganize-arm64\\src\\MonoMod.Core\\Interop\\CoreCLR.V100.cs",
+              "RelativeToolTip": "Interop\\CoreCLR.V100.cs",
+              "ViewState": "AgIAACgAAAAAAAAAAAAqwMgAAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-10-28T21:30:16.164Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 4,
+              "Title": "Core100Runtime.cs",
+              "DocumentMoniker": "D:\\MonoMod-reorganize-arm64\\src\\MonoMod.Core\\Platforms\\Runtimes\\Core100Runtime.cs",
+              "RelativeDocumentMoniker": "Platforms\\Runtimes\\Core100Runtime.cs",
+              "ToolTip": "D:\\MonoMod-reorganize-arm64\\src\\MonoMod.Core\\Platforms\\Runtimes\\Core100Runtime.cs",
+              "RelativeToolTip": "Platforms\\Runtimes\\Core100Runtime.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAUAAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-16T05:45:00.91Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "Core90Runtime.cs",
+              "DocumentMoniker": "D:\\MonoMod-reorganize-arm64\\src\\MonoMod.Core\\Platforms\\Runtimes\\Core90Runtime.cs",
+              "RelativeDocumentMoniker": "Platforms\\Runtimes\\Core90Runtime.cs",
+              "ToolTip": "D:\\MonoMod-reorganize-arm64\\src\\MonoMod.Core\\Platforms\\Runtimes\\Core90Runtime.cs",
+              "RelativeToolTip": "Platforms\\Runtimes\\Core90Runtime.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAcAAAAsAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-16T05:44:53.782Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "Core80Runtime.cs",
+              "DocumentMoniker": "D:\\MonoMod-reorganize-arm64\\src\\MonoMod.Core\\Platforms\\Runtimes\\Core80Runtime.cs",
+              "RelativeDocumentMoniker": "Platforms\\Runtimes\\Core80Runtime.cs",
+              "ToolTip": "D:\\MonoMod-reorganize-arm64\\src\\MonoMod.Core\\Platforms\\Runtimes\\Core80Runtime.cs",
+              "RelativeToolTip": "Platforms\\Runtimes\\Core80Runtime.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAADwvwAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-16T05:44:49.446Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "MonoMod.RuntimeDetour",
+              "DocumentMoniker": "D:\\MonoMod-reorganize-arm64\\src\\MonoMod.RuntimeDetour\\MonoMod.RuntimeDetour.csproj",
+              "RelativeDocumentMoniker": "..\\MonoMod.RuntimeDetour\\MonoMod.RuntimeDetour.csproj",
+              "ToolTip": "D:\\MonoMod-reorganize-arm64\\src\\MonoMod.RuntimeDetour\\MonoMod.RuntimeDetour.csproj",
+              "RelativeToolTip": "..\\MonoMod.RuntimeDetour\\MonoMod.RuntimeDetour.csproj",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000758|",
+              "WhenOpened": "2025-09-16T05:09:48.899Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 7,
+              "Title": "Core21Runtime.cs",
+              "DocumentMoniker": "D:\\MonoMod-reorganize-arm64\\src\\MonoMod.Core\\Platforms\\Runtimes\\Core21Runtime.cs",
+              "RelativeDocumentMoniker": "Platforms\\Runtimes\\Core21Runtime.cs",
+              "ToolTip": "D:\\MonoMod-reorganize-arm64\\src\\MonoMod.Core\\Platforms\\Runtimes\\Core21Runtime.cs",
+              "RelativeToolTip": "Platforms\\Runtimes\\Core21Runtime.cs",
+              "ViewState": "AgIAAP8BAAAAAAAAAAAuwBgCAAA+AAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-16T04:29:58.941Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 6,
+              "Title": "CoreBaseRuntime.cs",
+              "DocumentMoniker": "D:\\MonoMod-reorganize-arm64\\src\\MonoMod.Core\\Platforms\\Runtimes\\CoreBaseRuntime.cs",
+              "RelativeDocumentMoniker": "Platforms\\Runtimes\\CoreBaseRuntime.cs",
+              "ToolTip": "D:\\MonoMod-reorganize-arm64\\src\\MonoMod.Core\\Platforms\\Runtimes\\CoreBaseRuntime.cs",
+              "RelativeToolTip": "Platforms\\Runtimes\\CoreBaseRuntime.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-13T15:12:45Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 5,
+              "Title": "MonoRuntime.cs",
+              "DocumentMoniker": "D:\\MonoMod-reorganize-arm64\\src\\MonoMod.Core\\Platforms\\Runtimes\\MonoRuntime.cs",
+              "RelativeDocumentMoniker": "Platforms\\Runtimes\\MonoRuntime.cs",
+              "ToolTip": "D:\\MonoMod-reorganize-arm64\\src\\MonoMod.Core\\Platforms\\Runtimes\\MonoRuntime.cs",
+              "RelativeToolTip": "Platforms\\Runtimes\\MonoRuntime.cs",
+              "ViewState": "AgIAAOgAAAAAAAAAAAAIwFABAAANAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-09-03T20:53:06.765Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 8,
+              "Title": "Core60Runtime.cs",
+              "DocumentMoniker": "D:\\MonoMod-reorganize-arm64\\src\\MonoMod.Core\\Platforms\\Runtimes\\Core60Runtime.cs",
+              "RelativeDocumentMoniker": "Platforms\\Runtimes\\Core60Runtime.cs",
+              "ToolTip": "D:\\MonoMod-reorganize-arm64\\src\\MonoMod.Core\\Platforms\\Runtimes\\Core60Runtime.cs",
+              "RelativeToolTip": "Platforms\\Runtimes\\Core60Runtime.cs",
+              "ViewState": "AgIAAJIAAAAAAAAAAAAAAJ0AAAAhAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-08-25T03:40:56.877Z"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{3ae79031-e1bc-11d0-8f78-00a0c9110057}"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

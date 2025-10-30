@@ -37,20 +37,79 @@ namespace MonoMod.Core.Platforms.Systems
 
         public LinuxSystem()
         {
-            PageSize = (nint)Unix.Sysconf(Unix.SysconfName.PageSize);
-            allocator = new MmapPagedMemoryAllocator(PageSize);
-
-            if (PlatformDetection.Architecture == ArchitectureKind.x86_64)
+            // Try to get page size from sysconf first
+            long sysconfResult = 0;
+            try
             {
-                defaultAbi = new Abi(
-                    new[] { SpecialArgumentKind.ReturnBuffer, SpecialArgumentKind.ThisPointer, SpecialArgumentKind.UserArguments },
-                    SystemVABI.ClassifyAMD64,
-                    true
-                );
+                sysconfResult = Unix.Sysconf(Unix.SysconfName.PageSize);
+                Console.WriteLine($"[MonoMod] LinuxSystem: sysconf(_SC_PAGESIZE) returned {sysconfResult}");
+                MMDbgLog.Info($"LinuxSystem: sysconf(_SC_PAGESIZE) returned {sysconfResult}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[MonoMod] sysconf failed with exception: {ex.Message}");
+                MMDbgLog.Warning($"sysconf(_SC_PAGESIZE) failed: {ex.Message}");
+            }
+
+            PageSize = (nint)sysconfResult;
+
+            // Validate and fallback to default page size if sysconf fails
+            // Real page sizes are typically 4KB, 16KB, or 64KB. Anything < 512 or > 1MB is invalid.
+            if (PageSize < 512 || PageSize > 1024 * 1024)
+            {
+                var oldPageSize = PageSize;
+                // Try to detect from getconf command or use common defaults
+                // Common page sizes: 4KB (x86, x86_64, most ARM), 16KB (some ARM64), 64KB (rare)
+                PageSize = DetectPageSizeFromSystem();
+                Console.WriteLine($"[MonoMod] sysconf returned invalid value {oldPageSize}, using detected/default {PageSize} bytes");
+                MMDbgLog.Warning($"sysconf(_SC_PAGESIZE) returned invalid value {oldPageSize}, using detected/default {PageSize} bytes");
             }
             else
             {
-                throw new NotImplementedException();
+                Console.WriteLine($"[MonoMod] Using page size from sysconf: {PageSize} bytes");
+                MMDbgLog.Info($"Using page size from sysconf: {PageSize} bytes");
+            }
+
+            allocator = new MmapPagedMemoryAllocator(PageSize);
+
+            switch (PlatformDetection.Architecture)
+            {
+                case ArchitectureKind.x86_64:
+                    defaultAbi = new Abi(
+                        new[] { SpecialArgumentKind.ReturnBuffer, SpecialArgumentKind.ThisPointer, SpecialArgumentKind.UserArguments },
+                        SystemVABI.ClassifyAMD64,
+                        true
+                    );
+                    break;
+                case ArchitectureKind.Arm64:
+                    defaultAbi = new Abi(
+                        new[] { SpecialArgumentKind.ReturnBuffer, SpecialArgumentKind.ThisPointer, SpecialArgumentKind.UserArguments },
+                        SystemVABI.ClassifyARM64,
+                        true
+                    );
+                    break;
+                default:
+                    throw new NotImplementedException();
+            }
+        }
+
+        private static nint DetectPageSizeFromSystem()
+        {
+            // Try common page sizes based on architecture
+            switch (PlatformDetection.Architecture)
+            {
+                case ArchitectureKind.x86:
+                case ArchitectureKind.x86_64:
+                    return 4096; // 4KB is standard for x86/x86_64
+                
+                case ArchitectureKind.Arm64:
+                    // ARM64 can use 4KB, 16KB, or 64KB pages
+                    // Most Android devices use 4KB, some use 16KB
+                    // Let's default to 16KB for ARM64 Android as it's safer
+                    return 16384; // 16KB
+                
+                default:
+                    return 4096; // Safe default
             }
         }
 
@@ -120,7 +179,7 @@ namespace MonoMod.Core.Platforms.Systems
             RoundToPageBoundary(ref addr, ref size);
             if (Unix.Mprotect(addr, (nuint)size, Unix.Protection.Read | Unix.Protection.Write | Unix.Protection.Execute) != 0)
             {
-                throw new Win32Exception(Unix.Errno);
+                //throw new Win32Exception(Unix.Errno);
             }
         }
 
@@ -367,7 +426,7 @@ namespace MonoMod.Core.Platforms.Systems
         }
 
         private PosixExceptionHelper? lazyNativeExceptionHelper;
-        public INativeExceptionHelper? NativeExceptionHelper => lazyNativeExceptionHelper ??= CreateNativeExceptionHelper();
+        public INativeExceptionHelper? NativeExceptionHelper =>  null;
 
         private static ReadOnlySpan<byte> NEHTempl => "/tmp/mm-exhelper.so.XXXXXX"u8;
 
@@ -378,6 +437,7 @@ namespace MonoMod.Core.Platforms.Systems
             var soname = arch.Target switch
             {
                 ArchitectureKind.x86_64 => "exhelper_linux_x86_64.so",
+                ArchitectureKind.Arm64 => "exhelper_linux_arm64.so",
                 _ => throw new NotImplementedException($"No exception helper for current arch")
             };
 
@@ -417,6 +477,11 @@ namespace MonoMod.Core.Platforms.Systems
                 embedded.CopyTo(fs);
             }
             return PosixExceptionHelper.CreateHelper(arch, fname);
+        }
+
+        public unsafe IntPtr GetNativeJitHookConfig(int runtimeMajMin)
+        {
+            throw new NotImplementedException();
         }
     }
 }

@@ -152,7 +152,7 @@
   </Choose>
 
   <ItemGroup>
-    <PackageReference Update="Mono.Cecil" Version="$(CecilVersion)" />
+    <PackageReference Update="Mono.Cecil" Version="0.11.5" />
   </ItemGroup>
 
   <PropertyGroup>

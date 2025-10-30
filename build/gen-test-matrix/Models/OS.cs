@@ -102,7 +102,7 @@ internal sealed record OS : Enableable
 
             Arch = [
                 new() { RidName = "x64", UnityName = "macos_x64" }, // note: this comes from Rosetta
-                new() { RidName = "arm64", UnityName = "macos_arm64", IsRunnerArch = true, Enabled = false }, // We don't support ARM64
+                new() { RidName = "arm64", UnityName = "macos_arm64", IsRunnerArch = true },
             ]
         }
     ];

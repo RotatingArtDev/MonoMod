@@ -1,8 +1,11 @@
-﻿using MonoMod.Core.Utils;
+﻿
+using MonoMod.Core.Utils;
 using MonoMod.Utils;
 using System;
 using System.IO;
 using System.Linq;
+using System.Reflection;
+using System.Runtime.InteropServices;
 
 namespace MonoMod.Core.Platforms.Runtimes
 {
@@ -35,7 +38,7 @@ namespace MonoMod.Core.Platforms.Runtimes
 
                 case 6:
                     // .NET 6.0.x
-                    return new Core60Runtime(system);
+                    return new Core60Runtime(system, arch);
 
                 case 7:
                     // .NET 7.0.x
@@ -46,6 +49,9 @@ namespace MonoMod.Core.Platforms.Runtimes
                 case 9:
                     // .NET 9.0.x
                     return new Core90Runtime(system, arch);
+                case 10:
+                    // .NET 10.0.x
+                    return new Core100Runtime(system, arch);
 
                 // currently, we need to manually add support for new versions.
                 // TODO: possibly fall back to a JIT GUID check if we can?
@@ -64,11 +70,16 @@ namespace MonoMod.Core.Platforms.Runtimes
         protected CoreBaseRuntime(ISystem system)
         {
             System = system;
-
-            if (PlatformDetection.Architecture == ArchitectureKind.x86_64 &&
-                system.DefaultAbi is { } abi)
+            if (system.DefaultAbi is { } abi)
             {
-                AbiCore = AbiForCoreFx45X64(abi);
+                if (PlatformDetection.Architecture == ArchitectureKind.x86_64)
+                {
+                    AbiCore = AbiForCoreFx45X64(abi);
+                }
+                else if (PlatformDetection.Architecture == ArchitectureKind.Arm64)
+                {
+                    AbiCore = AbiForCoreFx45ARM64(abi);
+                }
             }
         }
 
@@ -76,14 +87,19 @@ namespace MonoMod.Core.Platforms.Runtimes
         {
             InstallJitHook(JitObject);
         }
+        public static string? manuallyLoadedJitPath ;
 
+        public static void SetManuallyLoadedJitPath(string path)
+        {
+            manuallyLoadedJitPath = path;
+        }
         private static bool IsMaybeClrJitPath(string path)
             => Path.GetFileNameWithoutExtension(path).EndsWith("clrjit", StringComparison.Ordinal);
-
         protected virtual string GetClrJitPath()
         {
             string? clrjitFile = null;
 
+            // 首先检查是否通过开关指定了路径
             if (Switches.TryGetSwitchValue(Switches.JitPath, out var swValue) && swValue is string jitPath)
             {
                 if (!IsMaybeClrJitPath(jitPath))
@@ -98,22 +114,36 @@ namespace MonoMod.Core.Platforms.Runtimes
                     {
                         MMDbgLog.Warning($"Provided path for MonoMod.JitPath switch was not loaded in this process. jitPath: {jitPath}");
                     }
+                    else
+                    {
+                        MMDbgLog.Trace($"Using JIT path from switch: {clrjitFile}");
+                        return clrjitFile; // 如果开关提供了有效路径，直接返回
+                    }
                 }
             }
 
+            // 检查是否有手动加载的库路径
+            if (!string.IsNullOrEmpty(manuallyLoadedJitPath))
+            {
+                MMDbgLog.Trace($"Using manually loaded JIT path: {manuallyLoadedJitPath}");
+                return manuallyLoadedJitPath;
+            }
+
+         
+
+            // 如果上述方法没找到，回退到原来的枚举已加载模块的方法
             clrjitFile ??= System.EnumerateLoadedModuleFiles()
                 .FirstOrDefault(f => f is not null && IsMaybeClrJitPath(f));
 
             if (clrjitFile is null)
                 throw new PlatformNotSupportedException("Could not locate clrjit library");
 
-            MMDbgLog.Trace($"Got jit path: {clrjitFile}");
+            MMDbgLog.Trace($"Final jit path: {clrjitFile}");
             return clrjitFile;
         }
 
         private IntPtr? lazyJitObject;
         protected IntPtr JitObject => lazyJitObject ??= GetJitObject();
-
         private unsafe IntPtr GetJitObject()
         {
             var path = GetClrJitPath();
@@ -132,7 +162,11 @@ namespace MonoMod.Core.Platforms.Runtimes
             }
         }
 
-        protected abstract void InstallJitHook(IntPtr jit);
+
+
+        protected virtual void InstallJitHook(IntPtr jit) => InstallManagedJitHook(jit);
+
+        protected abstract void InstallManagedJitHook(IntPtr jit);
 
         private INativeExceptionHelper? lazyNativeExceptionHelper;
         protected INativeExceptionHelper? NativeExceptionHelper => lazyNativeExceptionHelper ??= System.NativeExceptionHelper;

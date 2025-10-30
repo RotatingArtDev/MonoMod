@@ -7,7 +7,7 @@ using MonoMod.Utils;
 using System.Runtime.InteropServices;
 
 #if NETCOREAPP1_0_OR_GREATER
-//using Xunit.Abstractions;
+using Xunit.Abstractions;
 #endif
 
 #if NET9_0
@@ -32,7 +32,6 @@ using (new Hook(typeof(ReadOnlyMemory<char>).GetMethod("ToString")!, (ReadOnlyMe
     Console.WriteLine(str2);
 }
 
-#if false
 #if NETCOREAPP1_0_OR_GREATER
 
 {
@@ -44,7 +43,6 @@ using (new Hook(typeof(ReadOnlyMemory<char>).GetMethod("ToString")!, (ReadOnlyMe
     tcTest.TestJitExceptions();
 }
 
-#endif
 #endif
 
 unsafe
@@ -118,7 +116,6 @@ delegate int Get1Delegate();
 [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
 delegate int RandHook(Get1Delegate orig);
 
-#if false
 #if NETCOREAPP1_0_OR_GREATER
 
 internal sealed class DummyOutputHelper : ITestOutputHelper
@@ -132,5 +129,4 @@ internal sealed class DummyOutputHelper : ITestOutputHelper
     }
 }
 
-#endif
 #endif

@@ -5,8 +5,9 @@ namespace MonoMod.Core.Interop
 {
     internal static class Unix
     {
-        // If this dllimport decl isn't enough to get the runtime to load the right thing, I give up
-        public const string LibC = "libc";
+        // On Android, we need to use the fully qualified library name
+        // On other Linux systems, "libc" works fine
+        public const string LibC = "c";
 
 
         [DllImport(LibC, CallingConvention = CallingConvention.Cdecl, EntryPoint = "read")]
@@ -36,16 +37,10 @@ namespace MonoMod.Core.Interop
         [DllImport(LibC, CallingConvention = CallingConvention.Cdecl, EntryPoint = "mkstemp")]
         public static extern unsafe int MkSTemp(byte* template);
 
-        [DllImport(LibC, CallingConvention = CallingConvention.Cdecl, EntryPoint = "__errno_location")]
-        public static extern unsafe int* __errno_location();
+        [DllImport(LibC, CallingConvention = CallingConvention.Cdecl, EntryPoint = "__errno")]
+        public static extern unsafe int* __errno();
 
-        public static unsafe int Errno => *__errno_location();
-
-        static Unix()
-        {
-            // Preload pinvoke initialization so it doesn't affect errno when accessed the first time
-            _ = Errno;
-        }
+        public static unsafe int Errno => *__errno();
 
         [Flags]
         public enum PipeFlags : int
@@ -86,44 +81,47 @@ namespace MonoMod.Core.Interop
             FixedNoReplace = 0x100000,
         }
 
-        public enum SysconfName
+        public enum SysconfName : long
         {
-            ArgMax,
-            ChildMax,
-            ClockTick,
-            NGroupsMax,
-            OpenMax,
-            StreamMax,
-            TZNameMax,
-            JobControl,
-            SavedIds,
-            RealtimeSignals,
-            PriorityScheduling,
-            Timers,
-            AsyncIO,
-            PrioritizedIO,
-            SynchronizedIO,
-            FSync,
-            MappedFiles,
-            MemLock,
-            MemLockRange,
-            MemoryProtection,
-            MessagePassing,
-            Semaphores,
-            SharedMemoryObjects,
-            AIOListIOMax,
-            AIOMax,
-            AIOPrioDeltaMax,
-            DelayTimerMax,
-            MQOpenMax,
-            MQPrioMax,
-            Version,
-            PageSize,
-            RTSigMax,
-            SemNSemsMax,
-            SemValueMax,
-            SigQueueMax,
-            TimerMax,
+            // Standard POSIX sysconf values
+            // These values are standardized across Linux, Android, and most Unix systems
+            ArgMax = 0,
+            ChildMax = 1,
+            ClockTick = 2,
+            NGroupsMax = 3,
+            OpenMax = 4,
+            StreamMax = 5,
+            TZNameMax = 6,
+            JobControl = 7,
+            SavedIds = 8,
+            RealtimeSignals = 9,
+            PriorityScheduling = 10,
+            Timers = 11,
+            AsyncIO = 12,
+            PrioritizedIO = 13,
+            SynchronizedIO = 14,
+            FSync = 15,
+            MappedFiles = 16,
+            MemLock = 17,
+            MemLockRange = 18,
+            MemoryProtection = 19,
+            MessagePassing = 20,
+            Semaphores = 21,
+            SharedMemoryObjects = 22,
+            AIOListIOMax = 23,
+            AIOMax = 24,
+            AIOPrioDeltaMax = 25,
+            DelayTimerMax = 26,
+            MQOpenMax = 27,
+            MQPrioMax = 28,
+            Version = 29,
+            // _SC_PAGESIZE / _SC_PAGE_SIZE is typically 30 on most systems
+            PageSize = 30,
+            RTSigMax = 31,
+            SemNSemsMax = 32,
+            SemValueMax = 33,
+            SigQueueMax = 34,
+            TimerMax = 35,
         }
     }
 }

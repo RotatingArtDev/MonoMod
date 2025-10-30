@@ -27,19 +27,48 @@ namespace MonoMod.Core.Platforms
         /// <inheritdoc/>
         public ICoreDetour CreateDetour(CreateDetourRequest request)
         {
-            Helpers.ThrowIfArgumentNull(request.Source);
-            Helpers.ThrowIfArgumentNull(request.Target);
-
-            if (!triple.TryDisableInlining(request.Source))
-                MMDbgLog.Warning($"Could not disable inlining of method {request.Source}; detours may not be reliable");
-
-            // note: any source clones we generate here will be IL copies, but the request is for specifically if it is *not* an IL copy.
-            var detour = new Detour(triple, request.Source, request.Target);
-            if (request.ApplyByDefault)
+            try
             {
-                detour.Apply();
+                Helpers.ThrowIfArgumentNull(request.Source);
+                Helpers.ThrowIfArgumentNull(request.Target);
+                var source = request.Source!;
+                var target = request.Target!;
+
+                MMDbgLog.Info($"[DetourFactory] Creating detour: {source.Name} -> {target.Name}");
+                Console.WriteLine($"[MonoMod] DetourFactory creating detour: {source.Name} -> {target.Name}");
+
+                if (!triple.TryDisableInlining(source))
+                {
+                    MMDbgLog.Warning($"Could not disable inlining of method {source}; detours may not be reliable");
+                    Console.WriteLine($"[MonoMod] ⚠ Could not disable inlining of {source.Name}");
+                }
+
+                MMDbgLog.Info($"[DetourFactory] Creating Detour object...");
+                // note: any source clones we generate here will be IL copies, but the request is for specifically if it is *not* an IL copy.
+                var detour = new Detour(triple, source, target);
+                
+                MMDbgLog.Info($"[DetourFactory] Detour object created, applyByDefault={request.ApplyByDefault}");
+                Console.WriteLine($"[MonoMod] Detour object created, applyByDefault={request.ApplyByDefault}");
+                
+                if (request.ApplyByDefault)
+                {
+                    MMDbgLog.Info($"[DetourFactory] Applying detour immediately...");
+                    Console.WriteLine($"[MonoMod] Applying detour immediately...");
+                    detour.Apply();
+                    MMDbgLog.Info($"[DetourFactory] Detour applied");
+                    Console.WriteLine($"[MonoMod] ✓ Detour applied");
+                }
+                return detour;
             }
-            return detour;
+            catch (Exception ex)
+            {
+                MMDbgLog.Error($"[DetourFactory] CreateDetour failed: {ex.GetType().Name}: {ex.Message}");
+                MMDbgLog.Error($"[DetourFactory] Stack trace: {ex.StackTrace}");
+                Console.WriteLine($"[MonoMod] ❌ DetourFactory.CreateDetour failed: {ex.GetType().Name}");
+                Console.WriteLine($"[MonoMod] Message: {ex.Message}");
+                Console.WriteLine($"[MonoMod] Stack trace: {ex.StackTrace}");
+                throw;
+            }
         }
 
         private abstract class DetourBase : ICoreDetourBase
@@ -113,15 +142,32 @@ namespace MonoMod.Core.Platforms
 
                     try
                     {
+                        MMDbgLog.Info($"[DetourBase] Starting Apply()");
+                        Console.WriteLine($"[MonoMod] DetourBase.Apply() starting...");
+                        
                         DetourBox.IsApplying = true;
                         DetourBox.IsApplied = true;
 
-                        ReplaceDetourInLock(DetourBox, CreateDetour(), out var oldDetour);
+                        MMDbgLog.Info($"[DetourBase] Creating native detour...");
+                        Console.WriteLine($"[MonoMod] Creating native detour...");
+                        var newDetour = CreateDetour();
+                        
+                        MMDbgLog.Info($"[DetourBase] Replacing detour in lock...");
+                        Console.WriteLine($"[MonoMod] Replacing detour...");
+                        ReplaceDetourInLock(DetourBox, newDetour, out var oldDetour);
                         Helpers.DAssert(oldDetour is null);
+                        
+                        MMDbgLog.Info($"[DetourBase] Detour applied successfully");
+                        Console.WriteLine($"[MonoMod] ✓ DetourBase.Apply() completed successfully");
                     }
-                    catch
+                    catch (Exception ex)
                     {
                         DetourBox.IsApplied = false;
+                        MMDbgLog.Error($"[DetourBase] Apply failed: {ex.GetType().Name}: {ex.Message}");
+                        MMDbgLog.Error($"[DetourBase] Stack trace: {ex.StackTrace}");
+                        Console.WriteLine($"[MonoMod] ❌ DetourBase.Apply() failed: {ex.GetType().Name}");
+                        Console.WriteLine($"[MonoMod] Message: {ex.Message}");
+                        Console.WriteLine($"[MonoMod] Stack trace: {ex.StackTrace}");
                         throw;
                     }
                     finally

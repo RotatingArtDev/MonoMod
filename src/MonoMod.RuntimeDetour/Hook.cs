@@ -429,7 +429,29 @@ namespace MonoMod.RuntimeDetour
         /// <param name="config">The <see cref="DetourConfig"/> to use for this <see cref="Hook"/>.</param>
         /// <param name="applyByDefault">Whether or not this hook should be applied when the constructor finishes.</param>
         public Hook(MethodBase source, Delegate target, IDetourFactory factory, DetourConfig? config, bool applyByDefault)
-            : this(source, GetDelegateHookInfo(Helpers.ThrowIfNull(target), out var targetObj), targetObj, factory, config, applyByDefault) { }
+            : this(source, GetDelegateHookInfo(Helpers.ThrowIfNull(target), out var targetObj), targetObj, factory, config, applyByDefault) {
+
+            if (source == null)
+            {
+                MMDbgLog.Warning($"Hook source is null! Target: {target?.Method.Name ?? "unknown"}");
+                this.factory = factory;
+                Config = config;
+                Source = null!;
+
+                // 使用不同的变量名避免冲突
+                Target = GetDelegateHookInfo(Helpers.ThrowIfNull(target), out var tempTargetObj);
+
+                realTarget = null!;
+                trampoline = null!;
+                state = null!;
+                detour = null!;
+                delegateObjectScope = default;
+                disposedValue = true; // 标记为已释放
+                return;
+            }
+
+           
+        }
         #endregion
         #endregion
 
@@ -550,25 +572,50 @@ namespace MonoMod.RuntimeDetour
         /// <param name="applyByDefault">Whether or not this hook should be applied when the constructor finishes.</param>
         public Hook(MethodBase source, MethodInfo target, object? targetObject, IDetourFactory factory, DetourConfig? config, bool applyByDefault)
         {
-            Helpers.ThrowIfArgumentNull(source);
-            Helpers.ThrowIfArgumentNull(target);
-            Helpers.ThrowIfArgumentNull(factory);
-
-            this.factory = factory;
-            Config = config;
-            Source = PlatformTriple.Current.GetIdentifiable(source);
-            Target = target;
-
-            realTarget = PrepareRealTarget(targetObject, out trampoline, out delegateObjectScope);
-
-            MMDbgLog.Trace($"Creating Hook from {Source} to {Target}");
-
-            state = DetourManager.GetDetourState(source);
-            detour = new(this);
-
-            if (applyByDefault)
+            try
             {
-                Apply();
+                Helpers.ThrowIfArgumentNull(source);
+                Helpers.ThrowIfArgumentNull(target);
+                Helpers.ThrowIfArgumentNull(factory);
+
+                MMDbgLog.Info($"[Hook] Constructor called: source={source.Name}, target={target.Name}, applyByDefault={applyByDefault}");
+                Console.WriteLine($"[MonoMod] Creating Hook: {source.Name} -> {target.Name}");
+
+                this.factory = factory;
+                Config = config;
+                
+                MMDbgLog.Info($"[Hook] Getting identifiable source method...");
+                Source = PlatformTriple.Current.GetIdentifiable(source!);
+                Target = target!;
+
+                MMDbgLog.Info($"[Hook] Preparing real target...");
+                Console.WriteLine($"[MonoMod] Preparing real target method...");
+                realTarget = PrepareRealTarget(targetObject, out trampoline, out delegateObjectScope);
+
+                MMDbgLog.Trace($"Creating Hook from {Source} to {Target}");
+                MMDbgLog.Info($"[Hook] Getting detour state...");
+                
+                state = DetourManager.GetDetourState(source!);
+                detour = new(this);
+
+                MMDbgLog.Info($"[Hook] Hook object created successfully");
+                Console.WriteLine($"[MonoMod] Hook object created successfully");
+
+                if (applyByDefault)
+                {
+                    MMDbgLog.Info($"[Hook] applyByDefault=true, applying now...");
+                    Console.WriteLine($"[MonoMod] applyByDefault=true, applying hook...");
+                    Apply();
+                }
+            }
+            catch (Exception ex)
+            {
+                MMDbgLog.Error($"[Hook] Constructor failed: {ex.GetType().Name}: {ex.Message}");
+                MMDbgLog.Error($"[Hook] Stack trace: {ex.StackTrace}");
+                Console.WriteLine($"[MonoMod] ❌ Hook constructor failed: {ex.GetType().Name}");
+                Console.WriteLine($"[MonoMod] Message: {ex.Message}");
+                Console.WriteLine($"[MonoMod] Stack trace: {ex.StackTrace}");
+                throw;
             }
         }
 
@@ -726,11 +773,31 @@ namespace MonoMod.RuntimeDetour
             var lockTaken = false;
             try
             {
+                MMDbgLog.Info($"[Hook] Attempting to apply hook: {Source?.Name ?? "null"} -> {Target?.Name ?? "null"}");
+                Console.WriteLine($"[MonoMod] Applying Hook: {Source?.Name ?? "null"} -> {Target?.Name ?? "null"}");
+                
                 state.detourLock.Enter(ref lockTaken);
                 if (IsApplied)
+                {
+                    MMDbgLog.Info($"[Hook] Hook already applied, skipping");
+                    Console.WriteLine($"[MonoMod] Hook already applied, skipping");
                     return;
+                }
                 MMDbgLog.Trace($"Applying Hook from {Source} to {Target}");
+                Console.WriteLine($"[MonoMod] Adding detour to state...");
+                
                 state.AddDetour(detour, !lockTaken);
+                
+                MMDbgLog.Info($"[Hook] Successfully applied hook: {Source?.Name ?? "null"}");
+                Console.WriteLine($"[MonoMod] ✓ Hook applied successfully!");
+            }
+            catch (Exception ex)
+            {
+                MMDbgLog.Error($"[Hook] Failed to apply hook: {ex.GetType().Name}: {ex.Message}");
+                MMDbgLog.Error($"[Hook] Stack trace: {ex.StackTrace}");
+                Console.WriteLine($"[MonoMod] ❌ Hook apply failed: {ex.GetType().Name}: {ex.Message}");
+                Console.WriteLine($"[MonoMod] Stack trace: {ex.StackTrace}");
+                throw;
             }
             finally
             {

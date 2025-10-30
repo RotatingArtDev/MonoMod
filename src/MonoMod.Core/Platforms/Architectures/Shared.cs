@@ -47,9 +47,20 @@ namespace MonoMod.Core.Platforms.Architectures
 
             var maxAllocSize = system.MemoryAllocator.MaxSize;
             var allStubsSize = stubSize * vtableSize;
+            
+            // Ensure maxAllocSize is at least large enough for one stub
+            if (maxAllocSize < stubSize)
+            {
+                throw new PlatformNotSupportedException(
+                    $"MemoryAllocator.MaxSize ({maxAllocSize}) is smaller than stub size ({stubSize}). " +
+                    $"Cannot create vtable stubs on this platform.");
+            }
+            
             var numMainAllocs = allStubsSize / maxAllocSize;
 
             var numPerAlloc = maxAllocSize / stubSize;
+            Helpers.DAssert(numPerAlloc > 0, "numPerAlloc must be greater than 0");
+            
             var mainAllocSize = numPerAlloc * stubSize;
             var lastAllocSize = allStubsSize % mainAllocSize;
             Helpers.DAssert(mainAllocSize > lastAllocSize);

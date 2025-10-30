@@ -19,24 +19,45 @@ namespace MonoMod.Core.Platforms.Systems
     {
         public OSKind Target => OSKind.OSX;
 
-        public SystemFeature Features => SystemFeature.RXPages | SystemFeature.RWXPages;
+        public SystemFeature Features { get; }
 
         public Abi? DefaultAbi { get; }
 
         public MacOSSystem()
         {
-            if (PlatformDetection.Architecture == ArchitectureKind.x86_64)
+            switch (PlatformDetection.Architecture)
             {
-                // As best I can find (Apple docs are worthless) MacOS uses SystemV on x64
-                DefaultAbi = new Abi(
-                    new[] { SpecialArgumentKind.ReturnBuffer, SpecialArgumentKind.ThisPointer, SpecialArgumentKind.UserArguments },
-                    SystemVABI.ClassifyAMD64,
-                    true
-                );
-            }
-            else
-            {
-                throw new NotImplementedException();
+                case ArchitectureKind.x86_64:
+                    // As best I can find (Apple docs are worthless) MacOS uses SystemV on x64
+                    Features = SystemFeature.RXPages | SystemFeature.RWXPages;
+                    DefaultAbi = new Abi(
+                        new[]
+                        {
+                            SpecialArgumentKind.ReturnBuffer,
+                            SpecialArgumentKind.ThisPointer,
+                            SpecialArgumentKind.UserArguments
+                        },
+                        SystemVABI.ClassifyAMD64,
+                        true
+                    );
+                    break;
+                case ArchitectureKind.Arm64:
+                    Features = SystemFeature.RXPages | SystemFeature.MayUseNativeJitHooks;
+                    DefaultAbi = new Abi(
+                        new[]
+                        {
+                            SpecialArgumentKind.ReturnBuffer,
+                            SpecialArgumentKind.ThisPointer,
+                            SpecialArgumentKind.UserArguments
+                        },
+                        SystemVABI.ClassifyARM64,
+                        false
+                    );
+                    MacOSArm64Helper.Initialize();
+                    break;
+                default:
+                    throw new NotImplementedException();
+
             }
         }
 
@@ -147,7 +168,22 @@ namespace MonoMod.Core.Platforms.Systems
             // now we copy target to backup, then data to target
             var target = new Span<byte>((void*)patchTarget, data.Length);
             _ = target.TryCopyTo(backup);
-            data.CopyTo(target);
+            
+            if (PlatformDetection.Architecture == ArchitectureKind.Arm64 && curProt == vm_prot_t.All)
+            {
+                Helpers.Assert(MacOSArm64Helper.Instance is not null);
+                MMDbgLog.Trace($"RWX memory detected, doing memcpy for MAP_JIT");
+                
+                fixed (byte* dataPtr = data)
+                {
+                    MacOSArm64Helper.Instance.JitMemCpy(patchTarget, (IntPtr)dataPtr, (ulong)data.Length);
+                    MMDbgLog.Trace($"{data.Length} bytes written to 0x{patchTarget:X16}");
+                }
+            }
+            else
+            {
+                data.CopyTo(target);
+            }
 
             // if we got here when executable (either because the memory was already writable or we were able to make it writable) we need to flush the icache
             if (memIsExec)
@@ -358,6 +394,26 @@ namespace MonoMod.Core.Platforms.Systems
                 var prot = executable ? vm_prot_t.Execute : vm_prot_t.None;
                 prot |= vm_prot_t.Read | vm_prot_t.Write;
 
+                if (PlatformDetection.Architecture == ArchitectureKind.Arm64 && prot == vm_prot_t.All)
+                {
+                    MMDbgLog.Trace($"RWX memory detected, doing mmap with MAP_JIT");
+
+                    allocated = mmap(IntPtr.Zero, (ulong)size, map_prot.Read | map_prot.Write | map_prot.Execute, map_flags.Private | map_flags.Anonymous | map_flags.JIT, -1, 0);
+                    if (allocated == (IntPtr)(-1))
+                    {
+                        var lastError = Errno;
+                        var ex = new Win32Exception(lastError);
+                        MMDbgLog.Error($"Error creating allocation anywhere! {lastError} {ex}");
+                        allocated = default;
+                        
+                        return false;
+                    }
+                    
+                    MMDbgLog.Trace($"RWX memory allocated to 0x{allocated:X16} with size {size}");
+
+                    return true;
+                }
+                
                 // map the page
                 var addr = 0uL;
                 var kr = mach_vm_map(mach_task_self(), &addr, (ulong)size, 0, vm_flags.Anywhere,
@@ -379,6 +435,26 @@ namespace MonoMod.Core.Platforms.Systems
 
                 var prot = executable ? vm_prot_t.Execute : vm_prot_t.None;
                 prot |= vm_prot_t.Read | vm_prot_t.Write;
+                
+                if (PlatformDetection.Architecture == ArchitectureKind.Arm64 && prot == vm_prot_t.All)
+                {
+                    MMDbgLog.Trace($"RWX memory detected, doing mmap with MAP_JIT");
+
+                    allocated = mmap(pageAddr, (ulong)size, map_prot.Read | map_prot.Write | map_prot.Execute, map_flags.Fixed | map_flags.Private | map_flags.Anonymous | map_flags.JIT, -1, 0);
+                    if (allocated == (IntPtr)(-1))
+                    {
+                        var lastError = Errno;
+                        var ex = new Win32Exception(lastError);
+                        MMDbgLog.Error($"Error creating allocation anywhere! {lastError} {ex}");
+                        allocated = default;
+                        
+                        return false;
+                    }
+                    
+                    MMDbgLog.Trace($"RWX memory allocated to page at 0x{pageAddr:X16} with size {size}");
+                    
+                    return true;
+                }
 
                 // map the page
                 var addr = (ulong)pageAddr;
@@ -456,6 +532,7 @@ namespace MonoMod.Core.Platforms.Systems
             var soname = arch.Target switch
             {
                 ArchitectureKind.x86_64 => "exhelper_macos_x86_64.dylib",
+                ArchitectureKind.Arm64 => "exhelper_macos_arm64.dylib",
                 _ => throw new NotImplementedException($"No exception helper for current arch")
             };
 
@@ -496,6 +573,14 @@ namespace MonoMod.Core.Platforms.Systems
                 embedded.CopyTo(fs);
             }
             return PosixExceptionHelper.CreateHelper(arch, fname);
+        }
+
+        public unsafe IntPtr GetNativeJitHookConfig(int runtimeMajMin)
+        {
+            if (PlatformDetection.Architecture == ArchitectureKind.Arm64)
+                return MacOSArm64Helper.Instance?.GetJitHookConfig(runtimeMajMin) ?? IntPtr.Zero;
+            
+            return IntPtr.Zero;
         }
     }
 }

@@ -15,6 +15,9 @@
 
     <VersionPrefix>25.2.3</VersionPrefix>
     <PackageValidationBaselineVersion>25.0.0</PackageValidationBaselineVersion>
+    <LangVersion>13.0</LangVersion>
+
+    <TargetFrameworks>net8.0;net10.0</TargetFrameworks>
   </PropertyGroup>
 
   <ItemGroup>
