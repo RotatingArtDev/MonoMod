@@ -1,8 +1,13 @@
-# WIP: MonoMod for .NET for Android
+# MonoMod for .NET for Android
 
-hooking on public static void functions with no arguments works, while other cases haven't been tested yet.
+This is the version of MonoMod used by RotatingArtLauncher
+# CoreCLR
 
+Please note that NativeExceptionHelper has been disabled
 
+# MonoVM
+
+If you are on MonoVM, please do the following:</br>
 Add the following lines to your `.csproj` file
 ```xml
 </PropertyGroup>
